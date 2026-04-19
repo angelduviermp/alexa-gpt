@@ -3,7 +3,6 @@ const Alexa = require("ask-sdk-core");
 const { ExpressAdapter } = require("ask-sdk-express-adapter");
 
 const app = express();
-app.use(express.json());
 
 let ultimaRespuesta = "Esperando respuesta de Alexa...";
 
@@ -148,6 +147,7 @@ const skill = Alexa.SkillBuilders.custom()
   .addErrorHandlers(ErrorHandler)
   .create();
 
+// importante: deja la validacion desactivada por ahora para pruebas
 const adapter = new ExpressAdapter(skill, false, false);
 
 // --------- Endpoints ----------
@@ -157,7 +157,7 @@ app.get("/", (req, res) => {
 
 app.post("/alexa", adapter.getRequestHandlers());
 
-app.post("/ask", async (req, res) => {
+app.post("/ask", express.json(), async (req, res) => {
   try {
     const question = req.body.question || "Hola";
     const answer = await preguntarIA(question);
