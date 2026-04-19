@@ -27,6 +27,31 @@ app.post("/ask", async (req, res) => {
 
     const data = await response.json();
 
+    console.log("HF RESPONSE:", data); // 👈 para ver qué devuelve
+
+    // 👇 Manejo de errores de HuggingFace
+    if (data.error) {
+      return res.json({
+        answer: "El modelo está cargando, intenta otra vez en unos segundos..."
+      });
+    }
+
+    let answer = "No pude responder";
+
+    if (Array.isArray(data)) {
+      answer = data[0]?.generated_text || answer;
+    }
+
+    res.json({ answer });
+
+  } catch (error) {
+    console.error("ERROR:", error);
+    res.status(500).json({ error: "Error con HuggingFace" });
+  }
+});
+
+    const data = await response.json();
+
     let answer = "No pude responder";
 
     if (Array.isArray(data)) {
