@@ -11,19 +11,28 @@ app.post("/ask", async (req, res) => {
   try {
     const question = req.body.question || "Hola";
 
-    const response = await fetch(
-      "https://router.huggingface.co/hf-inference/models/google/flan-t5-base",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.HF_TOKEN}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          inputs: question
-        })
-      }
-    );
+    const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.HF_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "katanemo/Arch-Router-1.5B:hf-inference",
+        messages: [
+          {
+            role: "system",
+            content: "Responde en espanol, breve y claro."
+          },
+          {
+            role: "user",
+            content: question
+          }
+        ],
+        max_tokens: 120,
+        temperature: 0.7
+      })
+    });
 
     const text = await response.text();
     console.log("HF RAW:", text);
@@ -32,22 +41,18 @@ app.post("/ask", async (req, res) => {
     try {
       data = JSON.parse(text);
     } catch {
+      return res.status(500).json({ error: "HF devolvio algo que no es JSON" });
+    }
+
+    if (!response.ok) {
       return res.status(500).json({
-        error: "HuggingFace devolvio HTML y no JSON"
+        error: data.error || data.message || "Error de HuggingFace"
       });
     }
 
-    if (data.error) {
-      return res.json({
-        answer: `HF error: ${data.error}`
-      });
-    }
-
-    let answer = "No pude responder";
-
-    if (Array.isArray(data)) {
-      answer = data[0]?.generated_text || answer;
-    }
+    const answer =
+      data.choices?.[0]?.message?.content ||
+      "No pude responder.";
 
     res.json({ answer });
   } catch (error) {
