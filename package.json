@@ -1,13 +1,13 @@
 {
   "name": "alexa-gpt",
   "version": "1.0.0",
-  "description": "Alexa + OpenAI",
+  "description": "Alexa + HuggingFace",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "openai": "^4.56.0"
+    "node-fetch": "^3.3.2"
   }
 }
