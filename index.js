@@ -3,8 +3,11 @@ const Alexa = require("ask-sdk-core");
 const { ExpressAdapter } = require("ask-sdk-express-adapter");
 
 const app = express();
+app.use(express.json());
 
-// --------- Tu funcion IA ----------
+let ultimaRespuesta = "Esperando respuesta de Alexa...";
+
+// --------- Funcion IA ----------
 async function preguntarIA(question) {
   const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
     method: "POST",
@@ -52,7 +55,9 @@ const LaunchRequestHandler = {
     return Alexa.getRequestType(handlerInput.requestEnvelope) === "LaunchRequest";
   },
   handle(handlerInput) {
-    const speakOutput = "Hola, soy tu asistente virtual. Puedes decir, pregunta que es un transistor.";
+    const speakOutput =
+      "Hola, soy tu asistente virtual. Puedes decir, pregunta que es un transistor.";
+
     return handlerInput.responseBuilder
       .speak(speakOutput)
       .reprompt("Di tu pregunta.")
@@ -62,8 +67,10 @@ const LaunchRequestHandler = {
 
 const PreguntaIntentHandler = {
   canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest"
-      && Alexa.getIntentName(handlerInput.requestEnvelope) === "PreguntaIntent";
+    return (
+      Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest" &&
+      Alexa.getIntentName(handlerInput.requestEnvelope) === "PreguntaIntent"
+    );
   },
   async handle(handlerInput) {
     const pregunta =
@@ -71,6 +78,7 @@ const PreguntaIntentHandler = {
 
     try {
       const respuesta = await preguntarIA(pregunta);
+      ultimaRespuesta = respuesta;
 
       return handlerInput.responseBuilder
         .speak(respuesta)
@@ -78,6 +86,7 @@ const PreguntaIntentHandler = {
         .getResponse();
     } catch (error) {
       console.error("ERROR IA:", error);
+
       return handlerInput.responseBuilder
         .speak("Hubo un problema consultando la inteligencia artificial.")
         .getResponse();
@@ -87,8 +96,10 @@ const PreguntaIntentHandler = {
 
 const HelpIntentHandler = {
   canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest"
-      && Alexa.getIntentName(handlerInput.requestEnvelope) === "AMAZON.HelpIntent";
+    return (
+      Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest" &&
+      Alexa.getIntentName(handlerInput.requestEnvelope) === "AMAZON.HelpIntent"
+    );
   },
   handle(handlerInput) {
     return handlerInput.responseBuilder
@@ -100,11 +111,13 @@ const HelpIntentHandler = {
 
 const CancelAndStopIntentHandler = {
   canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest"
-      && (
+    return (
+      Alexa.getRequestType(handlerInput.requestEnvelope) === "IntentRequest" &&
+      (
         Alexa.getIntentName(handlerInput.requestEnvelope) === "AMAZON.CancelIntent" ||
         Alexa.getIntentName(handlerInput.requestEnvelope) === "AMAZON.StopIntent"
-      );
+      )
+    );
   },
   handle(handlerInput) {
     return handlerInput.responseBuilder
@@ -137,23 +150,27 @@ const skill = Alexa.SkillBuilders.custom()
 
 const adapter = new ExpressAdapter(skill, false, false);
 
+// --------- Endpoints ----------
 app.get("/", (req, res) => {
   res.send("Servidor Alexa activo");
 });
 
-// Endpoint para Alexa
 app.post("/alexa", adapter.getRequestHandlers());
 
-// Tu endpoint actual de prueba
-app.post("/ask", express.json(), async (req, res) => {
+app.post("/ask", async (req, res) => {
   try {
     const question = req.body.question || "Hola";
     const answer = await preguntarIA(question);
+    ultimaRespuesta = answer;
     res.json({ answer });
   } catch (error) {
-    console.error(error);
+    console.error("ERROR /ask:", error);
     res.status(500).json({ error: "Error con HuggingFace" });
   }
+});
+
+app.get("/latest", (req, res) => {
+  res.json({ answer: ultimaRespuesta });
 });
 
 const port = process.env.PORT || 3000;
